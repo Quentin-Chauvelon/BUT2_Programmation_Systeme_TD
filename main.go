@@ -12,6 +12,7 @@ import (
 	"strings"
 	"strconv"
 	"bufio"
+	"time"
 
 	"github.com/hajimehoshi/ebiten/v2"
 )
@@ -27,11 +28,12 @@ type msgContentType struct {
     msgType 		string
     nbConnected  	string
 	selectedScheme	int
+	runTime			time.Duration
 }
 
 
 func newMsgContent() *msgContentType {
-	var msgContent msgContentType = msgContentType{"", "0", 0}
+	var msgContent msgContentType = msgContentType{"", "0", 0, time.Since(time.Now())}
 
 	return &msgContent
 }
@@ -65,6 +67,21 @@ func ReadFromServer(g *Game) {
 					case "playerSelectedRunner":
 						msgContent.msgType = "playerSelectedRunner"
 						msgContent.selectedScheme, _ = strconv.Atoi(s[1]) 
+
+					case "startCountdown":	
+						msgContent.msgType = "startCountdown"
+
+					case "runnerArrived":
+						msgContent.msgType = "runnerArrived"
+						msgContent.runTime, err = time.ParseDuration(s[1])
+
+						if err != nil {
+							log.Println("Erreur : ", err)
+							return
+						}
+
+					case "showResults":
+						msgContent.msgType = "showResults"
 				}
 			}
 

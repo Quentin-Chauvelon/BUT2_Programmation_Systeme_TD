@@ -37,7 +37,6 @@ type Game struct {
 const (
 	StateWelcomeScreen int = iota // Title screen
 	StateChooseRunner             // Player selection screen
-	StateWaitForSelection
 	StateLaunchRun                // Countdown before a run
 	StateRun                      // Run
 	StateResult                   // Results announcement
@@ -47,7 +46,7 @@ const (
 // InitGame builds a new game ready for being run by ebiten
 func InitGame() (g Game) {
 
-	var serverIp string = "172.21.64.27"
+	var serverIp string = "172.21.66.68"
 	var serverPort string = "8080"
 
 	// Dial the server to join the game
