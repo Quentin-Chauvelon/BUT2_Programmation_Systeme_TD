@@ -205,16 +205,41 @@ func (g *Game) UpdateAnimation() {
 
 // HandleResults computes the resuls of a run and prepare them for
 // being displayed
-func (g *Game) HandleResults() bool {
-	if time.Since(g.f.chrono).Milliseconds() > 1000 || inpututil.IsKeyJustPressed(ebiten.KeySpace) {
-		g.resultStep++
-		g.f.chrono = time.Now()
+func (g *Game) HandleResults() {
+
+	if !g.isPlayerReadyToRestart {
+		if time.Since(g.f.chrono).Milliseconds() > 1000 || inpututil.IsKeyJustPressed(ebiten.KeySpace) {
+			g.resultStep++
+			g.f.chrono = time.Now()
+		}
+
+		if g.resultStep >= 4 && inpututil.IsKeyJustPressed(ebiten.KeySpace) {
+			
+			g.isPlayerReadyToRestart = true
+
+			go WriteToServer(g.writer, "playerIsReadyToRestart|")
+		}
 	}
-	if g.resultStep >= 4 && inpututil.IsKeyJustPressed(ebiten.KeySpace) {
-		g.resultStep = 0
-		return true
+
+	select {
+		case msg := <-g.c:
+			if msg.msgType == "playerIsReadyToRestart" {
+
+				g.nbOfPlayersReadyToRestart = msg.nbConnected
+
+				if msg.nbConnected == "4" {
+					g.Reset()
+					g.state = StateLaunchRun
+
+					g.resultStep = 0
+
+					g.isPlayerReadyToRestart = false
+					g.nbOfPlayersReadyToRestart = "0"
+				}
+			}
+			
+		default:
 	}
-	return false
 }
 
 
@@ -254,12 +279,17 @@ func (g *Game) Update() error {
 
 		g.UpdateAnimation()
 
+	// case StateResult:
+	// 	done := g.HandleResults()
+	// 	if done {
+	// 		g.Reset()
+	// 		g.state = StateLaunchRun
+	// 	}
+	// }
+
 	case StateResult:
-		done := g.HandleResults()
-		if done {
-			g.Reset()
-			g.state = StateLaunchRun
-		}
+		g.HandleResults()
 	}
+
 	return nil
 }

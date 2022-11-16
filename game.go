@@ -31,6 +31,8 @@ type Game struct {
 	writer 		*bufio.Writer
 	c 			chan msgContentType
 	nbJoueurs 	string
+	nbOfPlayersReadyToRestart 	string
+	isPlayerReadyToRestart 		bool
 }
 
 // These constants define the five possible states of the game
@@ -46,7 +48,7 @@ const (
 // InitGame builds a new game ready for being run by ebiten
 func InitGame() (g Game) {
 
-	var serverIp string = "172.21.66.68"
+	var serverIp string = "172.21.65.221"
 	var serverPort string = "8080"
 
 	// Dial the server to join the game
@@ -97,6 +99,11 @@ func InitGame() (g Game) {
 		xarrival: finish,
 		chrono:   time.Now(),
 	}
+
+	g.nbJoueurs = "0"
+	g.nbOfPlayersReadyToRestart = "0"
+
+	g.isPlayerReadyToRestart = false
 
 	return g
 }

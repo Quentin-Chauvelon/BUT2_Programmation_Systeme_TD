@@ -82,6 +82,10 @@ func ReadFromServer(g *Game) {
 
 					case "showResults":
 						msgContent.msgType = "showResults"
+
+					case "playerIsReadyToRestart":
+						msgContent.msgType = "playerIsReadyToRestart"
+						msgContent.nbConnected = s[1]
 				}
 			}
 
