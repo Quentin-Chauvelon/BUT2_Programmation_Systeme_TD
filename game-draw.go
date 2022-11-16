@@ -118,7 +118,11 @@ func (g *Game) DrawResult(screen *ebiten.Image) {
 	}
 
 	if g.resultStep > 4 {
-		ebitenutil.DebugPrintAt(screen, "Press SPACE to restart", screenWidth/2-60, 10)
+		if !g.isPlayerReadyToRestart {
+			ebitenutil.DebugPrintAt(screen, "Press SPACE to restart (" + g.nbOfPlayersReadyToRestart + "/4 prêts à redémarrer)", screenWidth/2-120, 10)
+		} else {
+			ebitenutil.DebugPrintAt(screen, g.nbOfPlayersReadyToRestart + "/4 prêts à redémarrer)", screenWidth/2-80, 10)
+		}
 	}
 }
 

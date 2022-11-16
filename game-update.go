@@ -31,6 +31,18 @@ func (g *Game) HandleWelcomeScreen() bool {
 		case msg := <-g.c:
 			if msg.msgType == "waitingForPlayers" {
 				g.nbJoueurs = msg.nbConnected
+
+			} else if msg.msgType == "playerSelectedRunner" {
+
+				for i := range g.runners {
+
+					// On modifie la couleur du runner du premier joueur qui n'a pas encore sélectionné son runner
+					if i != 0 && !g.runners[i].colorSelected {
+						g.runners[i].colorScheme = msg.selectedScheme
+						g.runners[i].colorSelected = true
+						break
+					}
+				}
 			}
 
 		default:
@@ -75,6 +87,10 @@ func (g *Game) ChooseRunners() {
 						break
 					}
 				}
+
+			} else if msg.msgType == "startCountdown" {
+				g.UpdateAnimation()
+				g.state++
 			}
 			
 		default:
@@ -96,32 +112,81 @@ func (g *Game) HandleLaunchRun() bool {
 }
 
 // UpdateRunners loops over all the runners to update each of them
+// func (g *Game) UpdateRunners() {
+// 	for i := range g.runners {
+// 		if i == 0 {
+// 			g.runners[i].ManualUpdate()
+// 		} else {
+// 			g.runners[i].RandomUpdate()
+// 		}
+// 	}
+// }
+
+// UpdateRunners loops over all the runners to update each of them
 func (g *Game) UpdateRunners() {
-	for i := range g.runners {
-		if i == 0 {
-			g.runners[i].ManualUpdate()
-		} else {
-			g.runners[i].RandomUpdate()
-		}
+
+	if !g.runners[0].arrived {
+		g.runners[0].ManualUpdate()
+	}
+
+	select {
+		case msg := <-g.c:
+			if msg.msgType == "runnerArrived" {
+
+				for i := range g.runners {
+
+					// On modifie le temps du premier joueur qui n'est pas encore arrivé
+					if i != 0 && !g.runners[i].arrived {
+						g.runners[i].runTime = msg.runTime
+						g.runners[i].arrived = true
+
+						// Si tous les joueurs ont fini la course, on montre le résultat
+						// (ne fonctionne pas car on passe à l'état suivant avant que la fonction checkArrival soit appelé,
+						// ce qui empêche de prévenir le serveur et donc les autres joueurs)
+						// if i == 3 {
+						// 	g.state++
+						// }
+
+						break
+					}
+				}
+			} else if msg.msgType == "showResults" {
+				g.state++
+			}
+			
+		default:
 	}
 }
+
 
 // CheckArrival loops over all the runners to check which ones are arrived
-func (g *Game) CheckArrival() (finished bool) {
-	finished = true
-	for i := range g.runners {
-		g.runners[i].CheckArrival(&g.f)
-		finished = finished && g.runners[i].arrived
+// func (g *Game) CheckArrival() (finished bool) {
+// 	finished = true
+// 	for i := range g.runners {
+// 		g.runners[i].CheckArrival(&g.f)
+// 		finished = finished && g.runners[i].arrived
+// 	}
+
+// 	rPressed := false
+
+// 	if (inpututil.IsKeyJustPressed(ebiten.KeyR)) {
+// 		rPressed = true
+// 	}
+
+// 	return finished || rPressed
+// }
+
+// CheckArrival loops over all the runners to check which ones are arrived
+func (g *Game) CheckArrival() {
+
+	g.runners[0].CheckArrival(&g.f)
+
+	if g.runners[0].arrived {
+		// go WriteToServer(g.writer, "runnerArrived|" + strconv.FormatInt(g.runners[0].runTime.Milliseconds(), 10))
+		go WriteToServer(g.writer, "runnerArrived|" + g.runners[0].runTime.String())
 	}
-
-	rPressed := false
-
-	if (inpututil.IsKeyJustPressed(ebiten.KeyR)) {
-		rPressed = true
-	}
-
-	return finished || rPressed
 }
+
 
 // Reset resets all the runners and the field in order to start a new run
 func (g *Game) Reset() {
@@ -140,17 +205,43 @@ func (g *Game) UpdateAnimation() {
 
 // HandleResults computes the resuls of a run and prepare them for
 // being displayed
-func (g *Game) HandleResults() bool {
-	if time.Since(g.f.chrono).Milliseconds() > 1000 || inpututil.IsKeyJustPressed(ebiten.KeySpace) {
-		g.resultStep++
-		g.f.chrono = time.Now()
+func (g *Game) HandleResults() {
+
+	if !g.isPlayerReadyToRestart {
+		if time.Since(g.f.chrono).Milliseconds() > 1000 || inpututil.IsKeyJustPressed(ebiten.KeySpace) {
+			g.resultStep++
+			g.f.chrono = time.Now()
+		}
+
+		if g.resultStep >= 4 && inpututil.IsKeyJustPressed(ebiten.KeySpace) {
+			
+			g.isPlayerReadyToRestart = true
+
+			go WriteToServer(g.writer, "playerIsReadyToRestart|")
+		}
 	}
-	if g.resultStep >= 4 && inpututil.IsKeyJustPressed(ebiten.KeySpace) {
-		g.resultStep = 0
-		return true
+
+	select {
+		case msg := <-g.c:
+			if msg.msgType == "playerIsReadyToRestart" {
+
+				g.nbOfPlayersReadyToRestart = msg.nbConnected
+
+				if msg.nbConnected == "4" {
+					g.Reset()
+					g.state = StateLaunchRun
+
+					g.resultStep = 0
+
+					g.isPlayerReadyToRestart = false
+					g.nbOfPlayersReadyToRestart = "0"
+				}
+			}
+			
+		default:
 	}
-	return false
 }
+
 
 // Update is the main update function of the game. It is called by ebiten
 // at each frame (60 times per second) just before calling Draw (game-draw.go)
@@ -178,19 +269,27 @@ func (g *Game) Update() error {
 		if done {
 			g.state++
 		}
+
 	case StateRun:
 		g.UpdateRunners()
-		finished := g.CheckArrival()
+		
+		if !g.runners[0].arrived {
+			g.CheckArrival()
+		}
+
 		g.UpdateAnimation()
-		if finished {
-			g.state++
-		}
+
+	// case StateResult:
+	// 	done := g.HandleResults()
+	// 	if done {
+	// 		g.Reset()
+	// 		g.state = StateLaunchRun
+	// 	}
+	// }
+
 	case StateResult:
-		done := g.HandleResults()
-		if done {
-			g.Reset()
-			g.state = StateLaunchRun
-		}
+		g.HandleResults()
 	}
+
 	return nil
 }

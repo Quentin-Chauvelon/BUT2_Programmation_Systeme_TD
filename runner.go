@@ -78,7 +78,8 @@ func (r *Runner) UpdateSpeed(keyPressed bool) {
 // state (i.e. during a run)
 func (r *Runner) UpdatePos() {
 	if !r.arrived {
-		r.xpos += r.speed
+		r.xpos += r.speed * 10
+		// TODO: remove * 10 above
 	}
 }
 
@@ -106,7 +107,6 @@ func (r *Runner) ManualChoose() (done bool) {
 	r.colorSelected =
 		(!r.colorSelected && inpututil.IsKeyJustPressed(ebiten.KeySpace)) ||
 			(r.colorSelected && !inpututil.IsKeyJustPressed(ebiten.KeySpace))
-	fmt.Println(!r.colorSelected)	
 	if !r.colorSelected {
 		if inpututil.IsKeyJustPressed(ebiten.KeyRight) {
 			r.colorScheme = (r.colorScheme + 1) % 8
