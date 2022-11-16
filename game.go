@@ -8,31 +8,31 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"course/assets"
 	"image"
 	"log"
-	"time"
 	"net"
-	"bufio"
+	"time"
 
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
 type Game struct {
-	state       int           // Current state of the game
-	runnerImage *ebiten.Image // Image with all the sprites of the runners
-	runners     [4]Runner     // The four runners used in the game
-	f           Field         // The running field
-	launchStep  int           // Current step in StateLaunchRun state
-	resultStep  int           // Current step in StateResult state
-	getTPS      bool          // Help for debug
-	conn 		net.Conn
-	writer 		*bufio.Writer
-	c 			chan msgContentType
-	nbJoueurs 	string
-	nbOfPlayersReadyToRestart 	string
-	isPlayerReadyToRestart 		bool
+	state                     int           // Current state of the game
+	runnerImage               *ebiten.Image // Image with all the sprites of the runners
+	runners                   [4]Runner     // The four runners used in the game
+	f                         Field         // The running field
+	launchStep                int           // Current step in StateLaunchRun state
+	resultStep                int           // Current step in StateResult state
+	getTPS                    bool          // Help for debug
+	conn                      net.Conn
+	writer                    *bufio.Writer
+	c                         chan msgContentType
+	nbJoueurs                 string
+	nbOfPlayersReadyToRestart string
+	isPlayerReadyToRestart    bool
 }
 
 // These constants define the five possible states of the game
@@ -44,16 +44,15 @@ const (
 	StateResult                   // Results announcement
 )
 
-
 // InitGame builds a new game ready for being run by ebiten
 func InitGame() (g Game) {
 
-	var serverIp string = "172.21.65.221"
+	var serverIp string = "172.21.66.118"
 	var serverPort string = "8080"
 
 	// Dial the server to join the game
-	conn, err := net.Dial("tcp", serverIp + ":" + serverPort)
-	
+	conn, err := net.Dial("tcp", serverIp+":"+serverPort)
+
 	if err != nil {
 		log.Println("Nous n'avons pas pu vous connecter au serveur")
 		log.Println("Dial error:", err)
@@ -77,7 +76,7 @@ func InitGame() (g Game) {
 
 	// Define game parameters
 	start := 50.0
-	finish := float64(screenWidth - 50) 
+	finish := float64(screenWidth - 50)
 	frameInterval := 20
 
 	// Create the runners

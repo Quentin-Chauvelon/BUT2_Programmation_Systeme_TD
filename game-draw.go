@@ -30,10 +30,10 @@ func (g *Game) DrawWelcomeScreen(screen *ebiten.Image) {
 		screenHeight/2-40,
 	)
 
-	if (g.nbJoueurs != "4") {
+	if g.nbJoueurs != "4" {
 		ebitenutil.DebugPrintAt(
 			screen,
-			fmt.Sprint(g.nbJoueurs + "/4 joueurs connectés"),
+			fmt.Sprint(g.nbJoueurs+"/4 joueurs connectés"),
 			screenWidth/2-60,
 			screenHeight/2,
 		)
@@ -119,9 +119,9 @@ func (g *Game) DrawResult(screen *ebiten.Image) {
 
 	if g.resultStep > 4 {
 		if !g.isPlayerReadyToRestart {
-			ebitenutil.DebugPrintAt(screen, "Press SPACE to restart (" + g.nbOfPlayersReadyToRestart + "/4 prêts à redémarrer)", screenWidth/2-120, 10)
+			ebitenutil.DebugPrintAt(screen, "Press SPACE to restart ("+g.nbOfPlayersReadyToRestart+"/4 prêts à redémarrer)", screenWidth/2-120, 10)
 		} else {
-			ebitenutil.DebugPrintAt(screen, g.nbOfPlayersReadyToRestart + "/4 prêts à redémarrer)", screenWidth/2-80, 10)
+			ebitenutil.DebugPrintAt(screen, g.nbOfPlayersReadyToRestart+"/4 prêts à redémarrer", screenWidth/2-80, 10)
 		}
 	}
 }
