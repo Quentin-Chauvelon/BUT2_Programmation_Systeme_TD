@@ -28,6 +28,7 @@ type Game struct {
 	resultStep                int           // Current step in StateResult state
 	getTPS                    bool          // Help for debug
 	conn                      net.Conn
+	id                        int
 	writer                    *bufio.Writer
 	c                         chan msgContentType
 	nbJoueurs                 string
@@ -47,7 +48,7 @@ const (
 // InitGame builds a new game ready for being run by ebiten
 func InitGame() (g Game) {
 
-	var serverIp string = "172.21.66.118"
+	var serverIp string = "172.21.66.68"
 	var serverPort string = "8080"
 
 	// Dial the server to join the game

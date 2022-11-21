@@ -16,9 +16,9 @@
 package main
 
 import (
-	"time"
+	"log"
 	"strconv"
-	// "log"
+	"time"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
@@ -28,24 +28,28 @@ import (
 // start the game
 func (g *Game) HandleWelcomeScreen() bool {
 	select {
-		case msg := <-g.c:
-			if msg.msgType == "waitingForPlayers" {
-				g.nbJoueurs = msg.nbConnected
+	case msg := <-g.c:
 
-			} else if msg.msgType == "playerSelectedRunner" {
+		if msg.msgType == "id" {
+			g.id = msg.id
 
-				for i := range g.runners {
+		} else if msg.msgType == "waitingForPlayers" {
+			g.nbJoueurs = msg.nbConnected
 
-					// On modifie la couleur du runner du premier joueur qui n'a pas encore sélectionné son runner
-					if i != 0 && !g.runners[i].colorSelected {
-						g.runners[i].colorScheme = msg.selectedScheme
-						g.runners[i].colorSelected = true
-						break
-					}
+		} else if msg.msgType == "playerSelectedRunner" {
+
+			for i := range g.runners {
+
+				// On modifie la couleur du runner du premier joueur qui n'a pas encore sélectionné son runner
+				if i != 0 && !g.runners[i].colorSelected {
+					g.runners[i].colorScheme = msg.selectedScheme
+					g.runners[i].colorSelected = true
+					break
 				}
 			}
+		}
 
-		default:
+	default:
 	}
 
 	return inpututil.IsKeyJustPressed(ebiten.KeySpace) && g.nbJoueurs == "4"
@@ -65,38 +69,36 @@ func (g *Game) HandleWelcomeScreen() bool {
 // 	return done
 // }
 
-
 func (g *Game) ChooseRunners() {
-	
+
 	if !(g.runners[0].colorSelected) {
 		if g.runners[0].ManualChoose() {
-			go WriteToServer(g.writer, "playerSelectedRunner|" + strconv.Itoa(g.runners[0].colorScheme))
+			go WriteToServer(g.writer, "playerSelectedRunner|"+strconv.Itoa(g.runners[0].colorScheme))
 		}
 	}
 
 	select {
-		case msg := <-g.c:
-			if msg.msgType == "playerSelectedRunner" {
+	case msg := <-g.c:
+		if msg.msgType == "playerSelectedRunner" {
 
-				for i := range g.runners {
+			for i := range g.runners {
 
-					// On modifie la couleur du runner du premier joueur qui n'a pas encore sélectionné son runner
-					if i != 0 && !g.runners[i].colorSelected {
-						g.runners[i].colorScheme = msg.selectedScheme
-						g.runners[i].colorSelected = true
-						break
-					}
+				// On modifie la couleur du runner du premier joueur qui n'a pas encore sélectionné son runner
+				if i != 0 && !g.runners[i].colorSelected {
+					g.runners[i].colorScheme = msg.selectedScheme
+					g.runners[i].colorSelected = true
+					break
 				}
-
-			} else if msg.msgType == "startCountdown" {
-				g.UpdateAnimation()
-				g.state++
 			}
-			
-		default:
+
+		} else if msg.msgType == "startCountdown" {
+			g.UpdateAnimation()
+			g.state++
+		}
+
+	default:
 	}
 }
-
 
 // HandleLaunchRun countdowns to the start of a run
 func (g *Game) HandleLaunchRun() bool {
@@ -130,34 +132,33 @@ func (g *Game) UpdateRunners() {
 	}
 
 	select {
-		case msg := <-g.c:
-			if msg.msgType == "runnerArrived" {
+	case msg := <-g.c:
+		if msg.msgType == "runnerArrived" {
 
-				for i := range g.runners {
+			for i := range g.runners {
 
-					// On modifie le temps du premier joueur qui n'est pas encore arrivé
-					if i != 0 && !g.runners[i].arrived {
-						g.runners[i].runTime = msg.runTime
-						g.runners[i].arrived = true
+				// On modifie le temps du premier joueur qui n'est pas encore arrivé
+				if i != 0 && !g.runners[i].arrived {
+					g.runners[i].runTime = msg.runTime
+					g.runners[i].arrived = true
 
-						// Si tous les joueurs ont fini la course, on montre le résultat
-						// (ne fonctionne pas car on passe à l'état suivant avant que la fonction checkArrival soit appelé,
-						// ce qui empêche de prévenir le serveur et donc les autres joueurs)
-						// if i == 3 {
-						// 	g.state++
-						// }
+					// Si tous les joueurs ont fini la course, on montre le résultat
+					// (ne fonctionne pas car on passe à l'état suivant avant que la fonction checkArrival soit appelé,
+					// ce qui empêche de prévenir le serveur et donc les autres joueurs)
+					// if i == 3 {
+					// 	g.state++
+					// }
 
-						break
-					}
+					break
 				}
-			} else if msg.msgType == "showResults" {
-				g.state++
 			}
-			
-		default:
+		} else if msg.msgType == "showResults" {
+			g.state++
+		}
+
+	default:
 	}
 }
-
 
 // CheckArrival loops over all the runners to check which ones are arrived
 // func (g *Game) CheckArrival() (finished bool) {
@@ -183,10 +184,9 @@ func (g *Game) CheckArrival() {
 
 	if g.runners[0].arrived {
 		// go WriteToServer(g.writer, "runnerArrived|" + strconv.FormatInt(g.runners[0].runTime.Milliseconds(), 10))
-		go WriteToServer(g.writer, "runnerArrived|" + g.runners[0].runTime.String())
+		go WriteToServer(g.writer, "runnerArrived|"+g.runners[0].runTime.String())
 	}
 }
-
 
 // Reset resets all the runners and the field in order to start a new run
 func (g *Game) Reset() {
@@ -214,7 +214,7 @@ func (g *Game) HandleResults() {
 		}
 
 		if g.resultStep >= 4 && inpututil.IsKeyJustPressed(ebiten.KeySpace) {
-			
+
 			g.isPlayerReadyToRestart = true
 
 			go WriteToServer(g.writer, "playerIsReadyToRestart|")
@@ -222,26 +222,25 @@ func (g *Game) HandleResults() {
 	}
 
 	select {
-		case msg := <-g.c:
-			if msg.msgType == "playerIsReadyToRestart" {
+	case msg := <-g.c:
+		if msg.msgType == "playerIsReadyToRestart" {
 
-				g.nbOfPlayersReadyToRestart = msg.nbConnected
+			g.nbOfPlayersReadyToRestart = msg.nbConnected
 
-				if msg.nbConnected == "4" {
-					g.Reset()
-					g.state = StateLaunchRun
+			if msg.nbConnected == "4" {
+				g.Reset()
+				g.state = StateLaunchRun
 
-					g.resultStep = 0
+				g.resultStep = 0
 
-					g.isPlayerReadyToRestart = false
-					g.nbOfPlayersReadyToRestart = "0"
-				}
+				g.isPlayerReadyToRestart = false
+				g.nbOfPlayersReadyToRestart = "0"
 			}
-			
-		default:
+		}
+
+	default:
 	}
 }
-
 
 // Update is the main update function of the game. It is called by ebiten
 // at each frame (60 times per second) just before calling Draw (game-draw.go)
@@ -272,7 +271,7 @@ func (g *Game) Update() error {
 
 	case StateRun:
 		g.UpdateRunners()
-		
+
 		if !g.runners[0].arrived {
 			g.CheckArrival()
 		}

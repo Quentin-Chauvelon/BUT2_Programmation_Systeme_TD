@@ -24,13 +24,14 @@ const (
 
 type msgContentType struct {
 	msgType        string
+	id             int
 	nbConnected    string
 	selectedScheme int
 	runTime        time.Duration
 }
 
 func newMsgContent() *msgContentType {
-	var msgContent msgContentType = msgContentType{"", "0", 0, time.Since(time.Now())}
+	var msgContent msgContentType = msgContentType{"", 0, "0", 0, time.Since(time.Now())}
 
 	return &msgContent
 }
@@ -54,6 +55,10 @@ func ReadFromServer(g *Game) {
 
 			if s != nil && len(s) > 0 {
 				switch s[0] {
+
+				case "id":
+					msgContent.msgType = "id"
+					msgContent.id, _ = strconv.Atoi(s[1])
 
 				case "waitingForPlayers":
 					msgContent.msgType = "waitingForPlayers"
@@ -129,6 +134,9 @@ func main() {
 }
 
 // faire un serveur propre (après le accept, goroutine pour chaque client)
+
+// struct sur le serveur pour stocker la couleur du perso et s'il est sélectionné?
+// et pour sélectionner la position exacte en temps réel pour sauter par dessus, et c'est le serveur qui dit ou chaque client doit se positionner quand il bouge
 
 // empêcher deux fois la même couleur
 // annuler une sélection
