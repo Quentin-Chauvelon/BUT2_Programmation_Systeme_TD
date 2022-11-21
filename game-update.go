@@ -16,9 +16,10 @@
 package main
 
 import (
-	"log"
 	"strconv"
 	"time"
+	"fmt"
+	// "log"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
@@ -36,17 +37,12 @@ func (g *Game) HandleWelcomeScreen() bool {
 		} else if msg.msgType == "waitingForPlayers" {
 			g.nbJoueurs = msg.nbConnected
 
+		} else if msg.msgType == "playerChangedRunner" {
+			g.runners[msg.id].colorScheme = msg.selectedScheme
+
 		} else if msg.msgType == "playerSelectedRunner" {
-
-			for i := range g.runners {
-
-				// On modifie la couleur du runner du premier joueur qui n'a pas encore sélectionné son runner
-				if i != 0 && !g.runners[i].colorSelected {
-					g.runners[i].colorScheme = msg.selectedScheme
-					g.runners[i].colorSelected = true
-					break
-				}
-			}
+			g.runners[msg.id].colorScheme = msg.selectedScheme
+			g.runners[msg.id].colorSelected = !g.runners[msg.id].colorSelected
 		}
 
 	default:
@@ -71,25 +67,34 @@ func (g *Game) HandleWelcomeScreen() bool {
 
 func (g *Game) ChooseRunners() {
 
-	if !(g.runners[0].colorSelected) {
-		if g.runners[0].ManualChoose() {
-			go WriteToServer(g.writer, "playerSelectedRunner|"+strconv.Itoa(g.runners[0].colorScheme))
+	// si le joueur n'a pas encore choisi de runner, on attend qu'il en choisisse un
+	if !(g.runners[g.id].colorSelected) {
+		if g.runners[g.id].ManualChoose() {
+			go WriteToServer(g.writer, "playerSelectedRunner|" + strconv.Itoa(g.runners[g.id].colorScheme))
+		}
+
+		if inpututil.IsKeyJustPressed(ebiten.KeyRight) {
+			go WriteToServer(g.writer, "playerChangedRunner|right")
+		} else if inpututil.IsKeyJustPressed(ebiten.KeyLeft) {
+			go WriteToServer(g.writer, "playerChangedRunner|left")
+		}
+
+	// Si le joueur à déjà sélectionné un runner et qu'il appuie sur espace, alors cela annule sa sélection
+	} else {
+		if inpututil.IsKeyJustPressed(ebiten.KeySpace) {
+			go WriteToServer(g.writer, "playerSelectedRunner|")
 		}
 	}
 
 	select {
 	case msg := <-g.c:
-		if msg.msgType == "playerSelectedRunner" {
 
-			for i := range g.runners {
+		if msg.msgType == "playerChangedRunner" {
+			g.runners[msg.id].colorScheme = msg.selectedScheme
 
-				// On modifie la couleur du runner du premier joueur qui n'a pas encore sélectionné son runner
-				if i != 0 && !g.runners[i].colorSelected {
-					g.runners[i].colorScheme = msg.selectedScheme
-					g.runners[i].colorSelected = true
-					break
-				}
-			}
+		}  else if msg.msgType == "playerSelectedRunner" {
+			g.runners[msg.id].colorScheme = msg.selectedScheme
+			g.runners[msg.id].colorSelected = !g.runners[msg.id].colorSelected
 
 		} else if msg.msgType == "startCountdown" {
 			g.UpdateAnimation()
@@ -127,31 +132,45 @@ func (g *Game) HandleLaunchRun() bool {
 // UpdateRunners loops over all the runners to update each of them
 func (g *Game) UpdateRunners() {
 
-	if !g.runners[0].arrived {
-		g.runners[0].ManualUpdate()
+	if !g.runners[g.id].arrived {
+		var previousPosition float64 = g.runners[g.id].xpos
+
+		g.runners[g.id].ManualUpdate()
+
+		if g.runners[g.id].xpos != previousPosition {
+			go WriteToServer(g.writer, "updateRunnerPosition|" + fmt.Sprintf("%f", g.runners[g.id].xpos) + "|" + fmt.Sprintf("%f", g.runners[g.id].speed))
+		}
 	}
 
 	select {
 	case msg := <-g.c:
-		if msg.msgType == "runnerArrived" {
+		if msg.msgType == "updateRunnerPosition" {
+			g.runners[msg.id].xpos = msg.runnerPosition
+			g.runners[msg.id].speed = msg.runnerSpeed
 
-			for i := range g.runners {
 
-				// On modifie le temps du premier joueur qui n'est pas encore arrivé
-				if i != 0 && !g.runners[i].arrived {
-					g.runners[i].runTime = msg.runTime
-					g.runners[i].arrived = true
+		} else if msg.msgType == "runnerArrived" {
 
-					// Si tous les joueurs ont fini la course, on montre le résultat
-					// (ne fonctionne pas car on passe à l'état suivant avant que la fonction checkArrival soit appelé,
-					// ce qui empêche de prévenir le serveur et donc les autres joueurs)
-					// if i == 3 {
-					// 	g.state++
-					// }
+			g.runners[msg.id].runTime = msg.runTime
+			g.runners[msg.id].arrived = true
+			// for i := range g.runners {
 
-					break
-				}
-			}
+			// 	// On modifie le temps du premier joueur qui n'est pas encore arrivé
+			// 	if i != 0 && !g.runners[i].arrived {
+			// 		g.runners[i].runTime = msg.runTime
+			// 		g.runners[i].arrived = true
+
+			// 		// Si tous les joueurs ont fini la course, on montre le résultat
+			// 		// (ne fonctionne pas car on passe à l'état suivant avant que la fonction checkArrival soit appelé,
+			// 		// ce qui empêche de prévenir le serveur et donc les autres joueurs)
+			// 		// if i == 3 {
+			// 		// 	g.state++
+			// 		// }
+
+			// 		break
+			// 	}
+			// }
+
 		} else if msg.msgType == "showResults" {
 			g.state++
 		}
@@ -180,11 +199,12 @@ func (g *Game) UpdateRunners() {
 // CheckArrival loops over all the runners to check which ones are arrived
 func (g *Game) CheckArrival() {
 
-	g.runners[0].CheckArrival(&g.f)
+	g.runners[g.id].CheckArrival(&g.f)
 
-	if g.runners[0].arrived {
+	if g.runners[g.id].arrived {
 		// go WriteToServer(g.writer, "runnerArrived|" + strconv.FormatInt(g.runners[0].runTime.Milliseconds(), 10))
-		go WriteToServer(g.writer, "runnerArrived|"+g.runners[0].runTime.String())
+		fmt.Println("runner arrived", g.id)
+		go WriteToServer(g.writer, "runnerArrived|"+g.runners[g.id].runTime.String())
 	}
 }
 
@@ -270,11 +290,11 @@ func (g *Game) Update() error {
 		}
 
 	case StateRun:
-		g.UpdateRunners()
-
-		if !g.runners[0].arrived {
+		if !g.runners[g.id].arrived {
 			g.CheckArrival()
 		}
+
+		g.UpdateRunners()
 
 		g.UpdateAnimation()
 

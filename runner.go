@@ -67,6 +67,10 @@ func (r *Runner) UpdateSpeed(keyPressed bool) {
 				r.speed = 10
 			}
 			r.framesSinceUpdate = 0
+
+			// si le joueur a avancé, on le partage avec les autres clients
+			// go WriteToServer("updateRunnerPosition|" + fmt.Sprintf("%f", r.xpos))
+
 		} else if r.framesSinceUpdate > r.maxFrameInterval {
 			r.speed = 0
 		}
@@ -78,8 +82,7 @@ func (r *Runner) UpdateSpeed(keyPressed bool) {
 // state (i.e. during a run)
 func (r *Runner) UpdatePos() {
 	if !r.arrived {
-		r.xpos += r.speed * 10
-		// TODO: remove * 10 above
+		r.xpos += r.speed
 	}
 }
 
@@ -104,17 +107,22 @@ func (r *Runner) UpdateAnimation(runnerImage *ebiten.Image) {
 // runner when the game is in StateChooseRunner state (i.e. at player selection
 // screen)
 func (r *Runner) ManualChoose() (done bool) {
-	r.colorSelected =
-		(!r.colorSelected && inpututil.IsKeyJustPressed(ebiten.KeySpace)) ||
+	// r.colorSelected =
+	// 	(!r.colorSelected && inpututil.IsKeyJustPressed(ebiten.KeySpace)) ||
+	// 		(r.colorSelected && !inpututil.IsKeyJustPressed(ebiten.KeySpace))
+
+	return (!r.colorSelected && inpututil.IsKeyJustPressed(ebiten.KeySpace)) ||
 			(r.colorSelected && !inpututil.IsKeyJustPressed(ebiten.KeySpace))
-	if !r.colorSelected {
-		if inpututil.IsKeyJustPressed(ebiten.KeyRight) {
-			r.colorScheme = (r.colorScheme + 1) % 8
-		} else if inpututil.IsKeyJustPressed(ebiten.KeyLeft) {
-			r.colorScheme = (r.colorScheme + 7) % 8
-		}
-	}	
-	return r.colorSelected
+
+	// if !r.colorSelected {
+	// 	if inpututil.IsKeyJustPressed(ebiten.KeyRight) {
+	// 		r.colorScheme = (r.colorScheme + 1) % 8
+	// 	} else if inpututil.IsKeyJustPressed(ebiten.KeyLeft) {
+	// 		r.colorScheme = (r.colorScheme + 7) % 8
+	// 	}
+	// }	
+
+	// return r.colorSelected
 }
 
 // RandomChoose allows to randomly select the appearance of a

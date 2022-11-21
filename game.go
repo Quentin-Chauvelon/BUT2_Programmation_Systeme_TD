@@ -45,7 +45,7 @@ const (
 	StateResult                   // Results announcement
 )
 
-// InitGame builds a new game ready for being run by ebiten
+// InitGame builds a new game ready for being run by ebiten  
 func InitGame() (g Game) {
 
 	var serverIp string = "172.21.66.68"
@@ -82,13 +82,9 @@ func InitGame() (g Game) {
 
 	// Create the runners
 	for i := range g.runners {
-		interval := 0
-		if i == 0 {
-			interval = frameInterval
-		}
 		g.runners[i] = Runner{
 			xpos: start, ypos: 50 + float64(i*20),
-			maxFrameInterval: interval,
+			maxFrameInterval: frameInterval,
 			colorScheme:      0,
 		}
 	}

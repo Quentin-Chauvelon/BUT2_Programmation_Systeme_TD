@@ -75,9 +75,9 @@ func (g *Game) DrawSelectScreen(screen *ebiten.Image) {
 	for i := range g.runners {
 
 		// si le joueur a sélectionné un runner, l'afficher
-		if g.runners[i].colorSelected || i == 0 {
+		// if g.runners[i].colorSelected || i == 0 {
 			g.runners[i].DrawSelection(screen, xStep, i)
-		}
+		// }
 	}
 }
 
@@ -115,6 +115,7 @@ func (g *Game) DrawResult(screen *ebiten.Image) {
 	for i := 1; i < g.resultStep && i <= 4; i++ {
 		s, ms := GetSeconds(g.runners[ranking[i-1]].runTime.Milliseconds())
 		ebitenutil.DebugPrintAt(screen, fmt.Sprint(i, ". P", ranking[i-1], "     ", s, ":", ms), screenWidth/2-40, 55+ranking[i-1]*20)
+
 	}
 
 	if g.resultStep > 4 {

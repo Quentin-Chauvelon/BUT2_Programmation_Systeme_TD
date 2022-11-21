@@ -28,10 +28,12 @@ type msgContentType struct {
 	nbConnected    string
 	selectedScheme int
 	runTime        time.Duration
+	runnerPosition float64
+	runnerSpeed float64
 }
 
 func newMsgContent() *msgContentType {
-	var msgContent msgContentType = msgContentType{"", 0, "0", 0, time.Since(time.Now())}
+	var msgContent msgContentType = msgContentType{"", 0, "0", 0, time.Since(time.Now()), 0.0, 0.0}
 
 	return &msgContent
 }
@@ -64,16 +66,29 @@ func ReadFromServer(g *Game) {
 					msgContent.msgType = "waitingForPlayers"
 					msgContent.nbConnected = s[1]
 
+				case "playerChangedRunner":
+					msgContent.msgType = "playerChangedRunner"
+					msgContent.id, _ = strconv.Atoi(s[1])
+					msgContent.selectedScheme, _ = strconv.Atoi(s[2])
+
 				case "playerSelectedRunner":
 					msgContent.msgType = "playerSelectedRunner"
-					msgContent.selectedScheme, _ = strconv.Atoi(s[1])
+					msgContent.id, _ = strconv.Atoi(s[1])
+					msgContent.selectedScheme, _ = strconv.Atoi(s[2])
 
 				case "startCountdown":
 					msgContent.msgType = "startCountdown"
 
+				case "updateRunnerPosition":
+					msgContent.msgType = "updateRunnerPosition"
+					msgContent.id, _ = strconv.Atoi(s[1])
+					msgContent.runnerPosition, _ = strconv.ParseFloat(s[2], 64)
+					msgContent.runnerSpeed, _ = strconv.ParseFloat(s[3], 64)
+
 				case "runnerArrived":
 					msgContent.msgType = "runnerArrived"
-					msgContent.runTime, err = time.ParseDuration(s[1])
+					msgContent.id, _ = strconv.Atoi(s[1])
+					msgContent.runTime, err = time.ParseDuration(s[2])
 
 					if err != nil {
 						log.Println("Erreur : ", err)
@@ -104,10 +119,11 @@ func ReadFromServer(g *Game) {
 // }
 
 func WriteToServer(writer *bufio.Writer, message string) {
-	log.Println("writing to server ", message)
+	// log.Println("writing to server ", message)
 	writer.WriteString(message + "|\n")
 	writer.Flush()
 }
+
 
 func main() {
 
@@ -132,16 +148,3 @@ func main() {
 		}
 	}
 }
-
-// faire un serveur propre (après le accept, goroutine pour chaque client)
-
-// struct sur le serveur pour stocker la couleur du perso et s'il est sélectionné?
-// et pour sélectionner la position exacte en temps réel pour sauter par dessus, et c'est le serveur qui dit ou chaque client doit se positionner quand il bouge
-
-// empêcher deux fois la même couleur
-// annuler une sélection
-// montrer en temps réel où tu es + sauter par dessus quelqu'un
-
-// voir en temps réel les coureurs
-// montrer les personnages avec les bonnes couleurs et les bons temps
-// avoir le même ordre de runners sur chaque client
