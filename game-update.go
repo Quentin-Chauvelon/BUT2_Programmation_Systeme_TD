@@ -153,6 +153,14 @@ func lirePosition(g *Game) {
 		if msg.msgType == "updateRunnerPosition" {
 			g.runners[msg.id].xpos = msg.runnerPosition
 			g.runners[msg.id].speed = msg.runnerSpeed
+			
+		} else if msg.msgType == "runnerArrived" {
+			g.runners[msg.id].runTime = msg.runTime
+			g.runners[msg.id].arrived = true
+
+			// on affiche les résultats
+		} else if msg.msgType == "showResults" {
+			g.state++
 		}
 
 	case <- time.After(16 * time.Millisecond):
@@ -188,21 +196,21 @@ func (g *Game) UpdateRunners() {
 	}
 
 	// on lit dans le canal
-	select {
-	case msg := <-g.c:
+	// select {
+	// case msg := <-g.c:
+	// 	fmt.Println(msg.msgType)
+	// 	// on met à jour le runTime du runner donné
+	// 	if msg.msgType == "runnerArrived" {
+	// 		g.runners[msg.id].runTime = msg.runTime
+	// 		g.runners[msg.id].arrived = true
 
-		// on met à jour le runTime du runner donné
-		if msg.msgType == "runnerArrived" {
-			g.runners[msg.id].runTime = msg.runTime
-			g.runners[msg.id].arrived = true
+	// 		// on affiche les résultats
+	// 	} else if msg.msgType == "showResults" {
+	// 		g.state++
+	// 	}
 
-			// on affiche les résultats
-		} else if msg.msgType == "showResults" {
-			g.state++
-		}
-
-	default:
-	}
+	// default:
+	// }
 
 	for i := 0; i < 4; i++ {
 		go lirePosition(g)
