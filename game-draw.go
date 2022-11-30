@@ -30,6 +30,7 @@ func (g *Game) DrawWelcomeScreen(screen *ebiten.Image) {
 		screenHeight/2-40,
 	)
 
+	// si tous les joueurs ne sont pas connectés, on affiche le nombre qu'ils sont
 	if g.nbJoueurs != "4" {
 		ebitenutil.DebugPrintAt(
 			screen,
@@ -37,6 +38,8 @@ func (g *Game) DrawWelcomeScreen(screen *ebiten.Image) {
 			screenWidth/2-60,
 			screenHeight/2,
 		)
+
+	// sinon, si tous les joueurs sont connectés, on affiche un message indiquant qu'ils peuvent démarrer
 	} else {
 		ebitenutil.DebugPrintAt(
 			screen,
@@ -72,12 +75,10 @@ func (g *Game) DrawSelectScreen(screen *ebiten.Image) {
 		options.GeoM.Translate(float64(xPos), float64(yPos))
 		screen.DrawImage(g.runnerImage.SubImage(image.Rect(0, i*32, 32, i*32+32)).(*ebiten.Image), options)
 	}
-	for i := range g.runners {
 
-		// si le joueur a sélectionné un runner, l'afficher
-		// if g.runners[i].colorSelected || i == 0 {
-			g.runners[i].DrawSelection(screen, xStep, i)
-		// }
+	// on affiche le runner actuellement sélectionné par chaque joueur même si ils n'ont pas encore validé leur sélection
+	for i := range g.runners {
+		g.runners[i].DrawSelection(screen, xStep, i)
 	}
 }
 
@@ -119,8 +120,12 @@ func (g *Game) DrawResult(screen *ebiten.Image) {
 	}
 
 	if g.resultStep > 4 {
+
+		// si le joueur n'est pas prêt à redémarrer, alors on lui affiche qu'il doit appuyer sur espace pour redémarrer ainsi que le nombre de joueurs prêts à redémarrer
 		if !g.isPlayerReadyToRestart {
 			ebitenutil.DebugPrintAt(screen, "Press SPACE to restart ("+g.nbOfPlayersReadyToRestart+"/4 prêts à redémarrer)", screenWidth/2-120, 10)
+
+		// sinon, si le joueur est prêt à redémarrer, alors on lui affiche le nombre de joueurs prêts à redémarrer
 		} else {
 			ebitenutil.DebugPrintAt(screen, g.nbOfPlayersReadyToRestart+"/4 prêts à redémarrer", screenWidth/2-80, 10)
 		}
