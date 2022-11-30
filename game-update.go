@@ -43,11 +43,14 @@ func (g *Game) HandleWelcomeScreen() bool {
 			// on modifie la couleur du runner sélectionnée pour qu'elle corresponde à l'id
 			// cela permet d'avoir une couleur unique pour chaque runner dès le début de la sélection des runners
 			g.runners[g.id].colorScheme = g.id + 1
-			go WriteToServer(g.writer, "playerChangedRunner|right")
 
 		// permet de savoir le nombre de joueurs connectés
 		} else if msg.msgType == "waitingForPlayers" {
 			g.nbJoueurs = msg.nbConnected
+
+			if g.nbJoueurs == "4" {
+				go WriteToServer(g.writer, "playerChangedRunner|right")
+			}
 
 		// sélectionne le runner donné pour le joueur donné
 		} else if msg.msgType == "playerChangedRunner" {
@@ -141,6 +144,22 @@ func (g *Game) HandleLaunchRun() bool {
 }
 
 
+func lirePosition(g *Game) {
+	// on lit dans le canal
+	select {
+	case msg := <-g.c:
+
+		// on met à jour la position et la vitesse du runner donné
+		if msg.msgType == "updateRunnerPosition" {
+			g.runners[msg.id].xpos = msg.runnerPosition
+			g.runners[msg.id].speed = msg.runnerSpeed
+		}
+
+	case <- time.After(16 * time.Millisecond):
+	}
+}
+
+
 // UpdateRunners
 func (g *Game) UpdateRunners() {
 
@@ -172,22 +191,21 @@ func (g *Game) UpdateRunners() {
 	select {
 	case msg := <-g.c:
 
-		// on met à jour la position et la vitesse du runner donné
-		if msg.msgType == "updateRunnerPosition" {
-			g.runners[msg.id].xpos = msg.runnerPosition
-			g.runners[msg.id].speed = msg.runnerSpeed
-
 		// on met à jour le runTime du runner donné
-		} else if msg.msgType == "runnerArrived" {
+		if msg.msgType == "runnerArrived" {
 			g.runners[msg.id].runTime = msg.runTime
 			g.runners[msg.id].arrived = true
 
-		// on affiche les résultats
+			// on affiche les résultats
 		} else if msg.msgType == "showResults" {
 			g.state++
 		}
 
 	default:
+	}
+
+	for i := 0; i < 4; i++ {
+		go lirePosition(g)
 	}
 }
 
