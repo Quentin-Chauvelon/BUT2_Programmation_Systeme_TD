@@ -49,7 +49,7 @@ const (
 func InitGame() (g Game) {
 
 	// on définit l'ip du serveur, ainsi que le port sur lequel le serveur écoute
-	var serverIp string = "172.21.65.60"
+	var serverIp string = "172.21.65.221"
 	var serverPort string = "8080"
 
 	// Dial the server to join the game
