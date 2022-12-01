@@ -144,7 +144,10 @@ func (g *Game) HandleLaunchRun() bool {
 }
 
 
-func lirePosition(g *Game) {
+// lit dans le canal, exécuté par une fonction de sorte à pouvoir la lancer plusieurs fois
+// la fonction est appelé en tant que goroutine, ce qui permet d'attendre un message ou d'arrêter
+// le select après un certain temps sans bloquer l'exécution du reste du programme
+func getStateRunMessages(g *Game) {
 	// on lit dans le canal
 	select {
 	case msg := <-g.c:
@@ -153,16 +156,23 @@ func lirePosition(g *Game) {
 		if msg.msgType == "updateRunnerPosition" {
 			g.runners[msg.id].xpos = msg.runnerPosition
 			g.runners[msg.id].speed = msg.runnerSpeed
-			
-		} else if msg.msgType == "runnerArrived" {
+
+		}
+
+		// un runner est arrivé, on modifie son temps
+		if msg.msgType == "runnerArrived" {
 			g.runners[msg.id].runTime = msg.runTime
 			g.runners[msg.id].arrived = true
 
 			// on affiche les résultats
-		} else if msg.msgType == "showResults" {
+		}
+
+		// afficher les résultats
+		if msg.msgType == "showResults" {
 			g.state++
 		}
 
+	// au bout de 16 millisecondes (~1 frame à 60fps), on arrête la goroutine, s'il ne s'est rien passé
 	case <- time.After(16 * time.Millisecond):
 	}
 }
@@ -195,25 +205,11 @@ func (g *Game) UpdateRunners() {
 		}
 	}
 
-	// on lit dans le canal
-	// select {
-	// case msg := <-g.c:
-	// 	fmt.Println(msg.msgType)
-	// 	// on met à jour le runTime du runner donné
-	// 	if msg.msgType == "runnerArrived" {
-	// 		g.runners[msg.id].runTime = msg.runTime
-	// 		g.runners[msg.id].arrived = true
-
-	// 		// on affiche les résultats
-	// 	} else if msg.msgType == "showResults" {
-	// 		g.state++
-	// 	}
-
-	// default:
-	// }
-
+	// on démarre 4 goroutines pour lire les positions de chaque joueur
+	// en effet, si on faisait un seul select, alors les messages du canal était lus moins vite qu'ils arrivaient
+	// par conséquent quand plusieurs joueurs couraient en même temps, leurs déplacement n'étaient pas répercutés en temps réel
 	for i := 0; i < 4; i++ {
-		go lirePosition(g)
+		go getStateRunMessages(g)
 	}
 }
 
