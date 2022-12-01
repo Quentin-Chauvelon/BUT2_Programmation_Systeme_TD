@@ -1,11 +1,10 @@
-// lit dans le canal, exécuté par une fonction de sorte à pouvoir la lancer plusieurs fois
-// la fonction est appelé en tant que goroutine, ce qui permet d'attendre un message ou d'arrêter
-// le select après un certain temps sans bloquer l'exécution du reste du programme
-
 package main
 
 import "time"
 
+// lit dans le canal durant StateRun
+// la fonction est appelé plusieurs fois en tant que goroutine, ce qui permet d'attendre un message ou d'arrêter
+// le select après un certain temps sans bloquer l'exécution du reste du programme
 func getStateRunMessages(g *Game) {
 	// on lit dans le canal
 	select {
