@@ -60,26 +60,27 @@ func (r *Runner) RandomUpdate() {
 // StateRun state (i.e. during a run)
 func (r *Runner) UpdateSpeed(keyPressed bool) {
 	if !r.arrived {
-		r.framesSinceUpdate++
+		// r.framesSinceUpdate++
 		if keyPressed {
 			r.speed = 1500 / float64(r.framesSinceUpdate*r.framesSinceUpdate*r.framesSinceUpdate)
 			if r.speed > 10 {
 				r.speed = 10
 			}
 			r.framesSinceUpdate = 0
-		} else if r.framesSinceUpdate > r.maxFrameInterval {
-			r.speed = 0
-		}
+		} // else if r.framesSinceUpdate > r.maxFrameInterval {
+		// 	r.speed = 0
+		// }
 	}
 }
+
+
 
 // UpdatePos sets the current (x) position of a runner according to the current
 // speed and the previous (x) position. It is used when the game is in StateRun
 // state (i.e. during a run)
 func (r *Runner) UpdatePos() {
 	if !r.arrived {
-		r.xpos += r.speed * 10
-		// TODO: remove * 10 above
+		r.xpos += r.speed
 	}
 }
 
@@ -87,6 +88,7 @@ func (r *Runner) UpdatePos() {
 // runner, depending of whether or not the runner is running, the current
 // animationStep and the current animationFrame
 func (r *Runner) UpdateAnimation(runnerImage *ebiten.Image) {
+
 	r.animationFrame++
 	if r.speed == 0 || r.arrived {
 		r.image = runnerImage.SubImage(image.Rect(0, r.colorScheme*32, 32, r.colorScheme*32+32)).(*ebiten.Image)
@@ -98,23 +100,39 @@ func (r *Runner) UpdateAnimation(runnerImage *ebiten.Image) {
 			r.animationFrame = 0
 		}
 	}
+
+	// au lieu d'exécuter le code suivant dans UpdateSpeed comme il l'était précédemment,
+	// nous l'avons déplacé ici de sorte à ce que quand on reçoit la position et la vitesse
+	// des autres joueurs, il suffit d'appeler UpdateAnimation pour faire arrêter l'animation
+	// Il est plus facile dans notre cas de gérer tout le processus d'animation dans une seule fonction
+	if !r.arrived {
+		r.framesSinceUpdate++
+
+		if r.framesSinceUpdate > r.maxFrameInterval {
+			r.speed = 0
+		}
+	}
 }
 
-// ManualChoose allows to use the keyboard for selecting the appearance of a
-// runner when the game is in StateChooseRunner state (i.e. at player selection
-// screen)
+// ManualChoose nous permet de savoir si le joueur à valider ou annuler la sélection d'un runner
+// la fonction ne s'occupe plus de sélectionner un joueur puisque c'est le serveur qui s'en occupe désormais
 func (r *Runner) ManualChoose() (done bool) {
-	r.colorSelected =
-		(!r.colorSelected && inpututil.IsKeyJustPressed(ebiten.KeySpace)) ||
+	// r.colorSelected =
+	// 	(!r.colorSelected && inpututil.IsKeyJustPressed(ebiten.KeySpace)) ||
+	// 		(r.colorSelected && !inpututil.IsKeyJustPressed(ebiten.KeySpace))
+
+	return (!r.colorSelected && inpututil.IsKeyJustPressed(ebiten.KeySpace)) ||
 			(r.colorSelected && !inpututil.IsKeyJustPressed(ebiten.KeySpace))
-	if !r.colorSelected {
-		if inpututil.IsKeyJustPressed(ebiten.KeyRight) {
-			r.colorScheme = (r.colorScheme + 1) % 8
-		} else if inpututil.IsKeyJustPressed(ebiten.KeyLeft) {
-			r.colorScheme = (r.colorScheme + 7) % 8
-		}
-	}	
-	return r.colorSelected
+
+	// if !r.colorSelected {
+	// 	if inpututil.IsKeyJustPressed(ebiten.KeyRight) {
+	// 		r.colorScheme = (r.colorScheme + 1) % 8
+	// 	} else if inpututil.IsKeyJustPressed(ebiten.KeyLeft) {
+	// 		r.colorScheme = (r.colorScheme + 7) % 8
+	// 	}
+	// }
+
+	// return r.colorSelected
 }
 
 // RandomChoose allows to randomly select the appearance of a

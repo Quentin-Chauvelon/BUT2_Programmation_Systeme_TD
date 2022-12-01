@@ -16,8 +16,9 @@
 package main
 
 import (
-	"time"
 	"strconv"
+	"time"
+	"fmt"
 	// "log"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -26,77 +27,108 @@ import (
 
 // HandleWelcomeScreen waits for the player to push SPACE in order to
 // start the game
+// la fonction lit aussi dans le canal pour définir l'id du client,
+// pour changer le nombre de joueurs connectés
+// et pour modifier le runner sélectionné et/ou validé par un client
 func (g *Game) HandleWelcomeScreen() bool {
+
+	// on lit dans le canal
 	select {
-		case msg := <-g.c:
-			if msg.msgType == "waitingForPlayers" {
-				g.nbJoueurs = msg.nbConnected
+	case msg := <-g.c:
 
-			} else if msg.msgType == "playerSelectedRunner" {
+		// permet de définir l'id du joueur
+		if msg.msgType == "id" {
+			g.id = msg.id
 
-				for i := range g.runners {
+			// on modifie la couleur du runner sélectionnée pour qu'elle corresponde à l'id
+			// cela permet d'avoir une couleur unique pour chaque runner dès le début de la sélection des runners
+			g.runners[g.id].colorScheme = g.id + 1
 
-					// On modifie la couleur du runner du premier joueur qui n'a pas encore sélectionné son runner
-					if i != 0 && !g.runners[i].colorSelected {
-						g.runners[i].colorScheme = msg.selectedScheme
-						g.runners[i].colorSelected = true
-						break
-					}
-				}
+		// permet de savoir le nombre de joueurs connectés
+		} else if msg.msgType == "waitingForPlayers" {
+			g.nbJoueurs = msg.nbConnected
+
+			if g.nbJoueurs == "4" {
+				go WriteToServer(g.writer, "playerChangedRunner|right")
 			}
 
-		default:
+		// sélectionne le runner donné pour le joueur donné
+		} else if msg.msgType == "playerChangedRunner" {
+			g.runners[msg.id].colorScheme = msg.selectedScheme
+
+		// valide ou annule la sélection du runner donné pour le joueur donné
+		} else if msg.msgType == "playerSelectedRunner" {
+			g.runners[msg.id].colorScheme = msg.selectedScheme
+			g.runners[msg.id].colorSelected = !g.runners[msg.id].colorSelected
+		}
+
+	default:
 	}
 
+	// on passe à l'étape suivante si le joueur appuie sur espace et qu'il y a 4 joueurs connectés
 	return inpututil.IsKeyJustPressed(ebiten.KeySpace) && g.nbJoueurs == "4"
 }
 
-// ChooseRunners loops over all the runners to check which sprite each
-// of them selected
-// func (g *Game) ChooseRunners() (done bool) {
-// 	done = true
 
-// 	done = g.runners[0].ManualChoose() && done
-
-// 	if done {
-// 		go WriteToServer(g.writer, "playerSelectedRunner|" + strconv.Itoa(g.runners[0].colorScheme))
-// 	}
-
-// 	return done
-// }
-
-
+// ChooseRunners permet de sélectionner un runner (lorsque l'on appuie sur les flèches gauche ou droite)
+//
 func (g *Game) ChooseRunners() {
-	
-	if !(g.runners[0].colorSelected) {
-		if g.runners[0].ManualChoose() {
-			go WriteToServer(g.writer, "playerSelectedRunner|" + strconv.Itoa(g.runners[0].colorScheme))
+
+	// 	done = true
+
+	// 	done = g.runners[0].ManualChoose() && done
+
+	// 	if done {
+		// 		go WriteToServer(g.writer, "playerSelectedRunner|" + strconv.Itoa(g.runners[0].colorScheme))
+	// 	}
+
+	// 	return done
+
+	// si le joueur n'a pas encore choisi de runner
+	if !(g.runners[g.id].colorSelected) {
+
+		// s'il valide sa sélection, on envoie au serveur le runner sélectionné
+		if g.runners[g.id].ManualChoose() {
+			go WriteToServer(g.writer, "playerSelectedRunner|" + strconv.Itoa(g.runners[g.id].colorScheme))
+		}
+
+		// s'il se déplace à gauche ou droite, on l'envoie au serveur pour que celui-ci nous dise
+		// quel devrait maintenant être sélectionné
+		if inpututil.IsKeyJustPressed(ebiten.KeyRight) {
+			go WriteToServer(g.writer, "playerChangedRunner|right")
+		} else if inpututil.IsKeyJustPressed(ebiten.KeyLeft) {
+			go WriteToServer(g.writer, "playerChangedRunner|left")
+		}
+
+	// Si le joueur à déjà sélectionné un runner et qu'il appuie sur espace, alors cela annule sa sélection
+	} else {
+		if inpututil.IsKeyJustPressed(ebiten.KeySpace) {
+			go WriteToServer(g.writer, "playerSelectedRunner|")
 		}
 	}
 
+	// on lit dans le canal
 	select {
-		case msg := <-g.c:
-			if msg.msgType == "playerSelectedRunner" {
+	case msg := <-g.c:
 
-				for i := range g.runners {
+		// sélectionne le runner donné pour le joueur donné
+		if msg.msgType == "playerChangedRunner" {
+			g.runners[msg.id].colorScheme = msg.selectedScheme
 
-					// On modifie la couleur du runner du premier joueur qui n'a pas encore sélectionné son runner
-					if i != 0 && !g.runners[i].colorSelected {
-						g.runners[i].colorScheme = msg.selectedScheme
-						g.runners[i].colorSelected = true
-						break
-					}
-				}
+		// valide ou annule la sélection du runner donné pour le joueur donné
+		}  else if msg.msgType == "playerSelectedRunner" {
+			g.runners[msg.id].colorScheme = msg.selectedScheme
+			g.runners[msg.id].colorSelected = !g.runners[msg.id].colorSelected
 
-			} else if msg.msgType == "startCountdown" {
-				g.UpdateAnimation()
-				g.state++
-			}
-			
-		default:
+		// démarre le compte à rebours
+		} else if msg.msgType == "startCountdown" {
+			g.UpdateAnimation()
+			g.state++
+		}
+
+	default:
 	}
 }
-
 
 // HandleLaunchRun countdowns to the start of a run
 func (g *Game) HandleLaunchRun() bool {
@@ -111,82 +143,61 @@ func (g *Game) HandleLaunchRun() bool {
 	return false
 }
 
-// UpdateRunners loops over all the runners to update each of them
-// func (g *Game) UpdateRunners() {
-// 	for i := range g.runners {
-// 		if i == 0 {
-// 			g.runners[i].ManualUpdate()
-// 		} else {
-// 			g.runners[i].RandomUpdate()
-// 		}
-// 	}
-// }
 
-// UpdateRunners loops over all the runners to update each of them
+// UpdateRunners
 func (g *Game) UpdateRunners() {
 
-	if !g.runners[0].arrived {
-		g.runners[0].ManualUpdate()
+	// for i := range g.runners {
+		// if i == 0 {
+				// g.runners[i].ManualUpdate()
+			// } else {
+					// g.runners[i].RandomUpdate()
+			// }
+		// }
+	// }
+
+	// si le runner n'est pas encore arrivé
+	if !g.runners[g.id].arrived {
+		// on sauvegarde sa position
+		var previousPosition float64 = g.runners[g.id].xpos
+
+		// on met à jour sa position
+		g.runners[g.id].ManualUpdate()
+
+		// s'il le runner a changé de position, on envoie sa nouvelle position au serveur
+		// (cela évite de le faire systématiquement même si le joueur ne bouge pas)
+		if g.runners[g.id].xpos != previousPosition {
+			go WriteToServer(g.writer, "updateRunnerPosition|" + fmt.Sprintf("%f", g.runners[g.id].xpos) + "|" + fmt.Sprintf("%f", g.runners[g.id].speed))
+		}
 	}
 
-	select {
-		case msg := <-g.c:
-			if msg.msgType == "runnerArrived" {
-
-				for i := range g.runners {
-
-					// On modifie le temps du premier joueur qui n'est pas encore arrivé
-					if i != 0 && !g.runners[i].arrived {
-						g.runners[i].runTime = msg.runTime
-						g.runners[i].arrived = true
-
-						// Si tous les joueurs ont fini la course, on montre le résultat
-						// (ne fonctionne pas car on passe à l'état suivant avant que la fonction checkArrival soit appelé,
-						// ce qui empêche de prévenir le serveur et donc les autres joueurs)
-						// if i == 3 {
-						// 	g.state++
-						// }
-
-						break
-					}
-				}
-			} else if msg.msgType == "showResults" {
-				g.state++
-			}
-			
-		default:
+	// on démarre 4 goroutines pour lire les positions de chaque joueur
+	// en effet, si on faisait un seul select, alors les messages du canal était lus moins vite qu'ils arrivaient
+	// par conséquent quand plusieurs joueurs couraient en même temps, leurs déplacement n'étaient pas répercutés en temps réel
+	for i := 0; i < 4; i++ {
+		go getStateRunMessages(g)
 	}
 }
 
 
-// CheckArrival loops over all the runners to check which ones are arrived
-// func (g *Game) CheckArrival() (finished bool) {
-// 	finished = true
-// 	for i := range g.runners {
-// 		g.runners[i].CheckArrival(&g.f)
-// 		finished = finished && g.runners[i].arrived
-// 	}
-
-// 	rPressed := false
-
-// 	if (inpututil.IsKeyJustPressed(ebiten.KeyR)) {
-// 		rPressed = true
-// 	}
-
-// 	return finished || rPressed
-// }
-
-// CheckArrival loops over all the runners to check which ones are arrived
+// CheckArrival regarde si le runner est arrivé, et le dit au serveur s'il l'est
 func (g *Game) CheckArrival() {
 
-	g.runners[0].CheckArrival(&g.f)
+	// finished = true
+	// for i := range g.runners {
+	// 	g.runners[i].CheckArrival(&g.f)
+	// 	finished = finished && g.runners[i].arrived
+	// }
+	// return finished
 
-	if g.runners[0].arrived {
-		// go WriteToServer(g.writer, "runnerArrived|" + strconv.FormatInt(g.runners[0].runTime.Milliseconds(), 10))
-		go WriteToServer(g.writer, "runnerArrived|" + g.runners[0].runTime.String())
+	// on regarde si le runner est arrivé
+	g.runners[g.id].CheckArrival(&g.f)
+
+	// si le runner est arrivé, on envoie au serveur notre temps
+	if g.runners[g.id].arrived {
+		go WriteToServer(g.writer, "runnerArrived|"+g.runners[g.id].runTime.String())
 	}
 }
-
 
 // Reset resets all the runners and the field in order to start a new run
 func (g *Game) Reset() {
@@ -205,6 +216,7 @@ func (g *Game) UpdateAnimation() {
 
 // HandleResults computes the resuls of a run and prepare them for
 // being displayed
+// la fonction 
 func (g *Game) HandleResults() {
 
 	if !g.isPlayerReadyToRestart {
@@ -214,34 +226,41 @@ func (g *Game) HandleResults() {
 		}
 
 		if g.resultStep >= 4 && inpututil.IsKeyJustPressed(ebiten.KeySpace) {
-			
-			g.isPlayerReadyToRestart = true
+			// g.resultStep = 0
+			// return true
 
+			// on définit le joueur comme prêt à redémarrer et on le dit au serveur
+			g.isPlayerReadyToRestart = true
 			go WriteToServer(g.writer, "playerIsReadyToRestart|")
 		}
 	}
 
+
+	// on lit dans le canal
 	select {
-		case msg := <-g.c:
-			if msg.msgType == "playerIsReadyToRestart" {
+	case msg := <-g.c:
 
-				g.nbOfPlayersReadyToRestart = msg.nbConnected
+		// un joueur est prêt à redémarrer
+		if msg.msgType == "playerIsReadyToRestart" {
 
-				if msg.nbConnected == "4" {
-					g.Reset()
-					g.state = StateLaunchRun
+			// on modifie le nombre de joueurs prêts à redémarrer
+			g.nbOfPlayersReadyToRestart = msg.nbConnected
 
-					g.resultStep = 0
+			// si les 4 joueurs sont prêts à redémarrer, on réinitialise certaines variables de g et on recommence le compte à rebours
+			if msg.nbConnected == "4" {
+				g.Reset()
+				g.state = StateLaunchRun
 
-					g.isPlayerReadyToRestart = false
-					g.nbOfPlayersReadyToRestart = "0"
-				}
+				g.resultStep = 0
+
+				g.isPlayerReadyToRestart = false
+				g.nbOfPlayersReadyToRestart = "0"
 			}
-			
-		default:
+		}
+
+	default:
 	}
 }
-
 
 // Update is the main update function of the game. It is called by ebiten
 // at each frame (60 times per second) just before calling Draw (game-draw.go)
@@ -262,6 +281,11 @@ func (g *Game) Update() error {
 	// 	}
 
 	case StateChooseRunner:
+		// done := g.ChooseRunners()
+		// if done {
+		// 	g.UpdateAnimation()
+		// 	g.state++
+		// }
 		g.ChooseRunners()
 
 	case StateLaunchRun:
@@ -271,23 +295,28 @@ func (g *Game) Update() error {
 		}
 
 	case StateRun:
-		g.UpdateRunners()
-		
-		if !g.runners[0].arrived {
+		// g.UpdateRunners()
+		// finished := g.CheckArrival()
+		// g.UpdateAnimation()
+		// if finished {
+			// g.state++
+		// }
+
+		// si le runner n'est pas encore arrivé, on regarde s'il le sera après avoir mis à jour sa position
+		if !g.runners[g.id].arrived {
 			g.CheckArrival()
 		}
 
+		g.UpdateRunners()
+
 		g.UpdateAnimation()
 
-	// case StateResult:
-	// 	done := g.HandleResults()
-	// 	if done {
-	// 		g.Reset()
-	// 		g.state = StateLaunchRun
-	// 	}
-	// }
-
 	case StateResult:
+		// done := g.HandleResults()
+		// if done {
+		// 	g.Reset()
+		// 	g.state = StateLaunchRun
+		// }
 		g.HandleResults()
 	}
 
