@@ -16,9 +16,9 @@
 package main
 
 import (
+	"fmt"
 	"strconv"
 	"time"
-	"fmt"
 	// "log"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -44,7 +44,7 @@ func (g *Game) HandleWelcomeScreen() bool {
 			// cela permet d'avoir une couleur unique pour chaque runner dès le début de la sélection des runners
 			g.runners[g.id].colorScheme = g.id + 1
 
-		// permet de savoir le nombre de joueurs connectés
+			// permet de savoir le nombre de joueurs connectés
 		} else if msg.msgType == "waitingForPlayers" {
 			g.nbJoueurs = msg.nbConnected
 
@@ -52,11 +52,11 @@ func (g *Game) HandleWelcomeScreen() bool {
 				go WriteToServer(g.writer, "playerChangedRunner|right")
 			}
 
-		// sélectionne le runner donné pour le joueur donné
+			// sélectionne le runner donné pour le joueur donné
 		} else if msg.msgType == "playerChangedRunner" {
 			g.runners[msg.id].colorScheme = msg.selectedScheme
 
-		// valide ou annule la sélection du runner donné pour le joueur donné
+			// valide ou annule la sélection du runner donné pour le joueur donné
 		} else if msg.msgType == "playerSelectedRunner" {
 			g.runners[msg.id].colorScheme = msg.selectedScheme
 			g.runners[msg.id].colorSelected = !g.runners[msg.id].colorSelected
@@ -69,9 +69,7 @@ func (g *Game) HandleWelcomeScreen() bool {
 	return inpututil.IsKeyJustPressed(ebiten.KeySpace) && g.nbJoueurs == "4"
 }
 
-
 // ChooseRunners permet de sélectionner un runner (lorsque l'on appuie sur les flèches gauche ou droite)
-//
 func (g *Game) ChooseRunners() {
 
 	// 	done = true
@@ -79,7 +77,7 @@ func (g *Game) ChooseRunners() {
 	// 	done = g.runners[0].ManualChoose() && done
 
 	// 	if done {
-		// 		go WriteToServer(g.writer, "playerSelectedRunner|" + strconv.Itoa(g.runners[0].colorScheme))
+	// 		go WriteToServer(g.writer, "playerSelectedRunner|" + strconv.Itoa(g.runners[0].colorScheme))
 	// 	}
 
 	// 	return done
@@ -89,7 +87,7 @@ func (g *Game) ChooseRunners() {
 
 		// s'il valide sa sélection, on envoie au serveur le runner sélectionné
 		if g.runners[g.id].ManualChoose() {
-			go WriteToServer(g.writer, "playerSelectedRunner|" + strconv.Itoa(g.runners[g.id].colorScheme))
+			go WriteToServer(g.writer, "playerSelectedRunner|"+strconv.Itoa(g.runners[g.id].colorScheme))
 		}
 
 		// s'il se déplace à gauche ou droite, on l'envoie au serveur pour que celui-ci nous dise
@@ -100,7 +98,7 @@ func (g *Game) ChooseRunners() {
 			go WriteToServer(g.writer, "playerChangedRunner|left")
 		}
 
-	// Si le joueur à déjà sélectionné un runner et qu'il appuie sur espace, alors cela annule sa sélection
+		// Si le joueur à déjà sélectionné un runner et qu'il appuie sur espace, alors cela annule sa sélection
 	} else {
 		if inpututil.IsKeyJustPressed(ebiten.KeySpace) {
 			go WriteToServer(g.writer, "playerSelectedRunner|")
@@ -115,12 +113,12 @@ func (g *Game) ChooseRunners() {
 		if msg.msgType == "playerChangedRunner" {
 			g.runners[msg.id].colorScheme = msg.selectedScheme
 
-		// valide ou annule la sélection du runner donné pour le joueur donné
-		}  else if msg.msgType == "playerSelectedRunner" {
+			// valide ou annule la sélection du runner donné pour le joueur donné
+		} else if msg.msgType == "playerSelectedRunner" {
 			g.runners[msg.id].colorScheme = msg.selectedScheme
 			g.runners[msg.id].colorSelected = !g.runners[msg.id].colorSelected
 
-		// démarre le compte à rebours
+			// démarre le compte à rebours
 		} else if msg.msgType == "startCountdown" {
 			g.UpdateAnimation()
 			g.state++
@@ -143,17 +141,16 @@ func (g *Game) HandleLaunchRun() bool {
 	return false
 }
 
-
 // UpdateRunners
 func (g *Game) UpdateRunners() {
 
 	// for i := range g.runners {
-		// if i == 0 {
-				// g.runners[i].ManualUpdate()
-			// } else {
-					// g.runners[i].RandomUpdate()
-			// }
-		// }
+	// if i == 0 {
+	// g.runners[i].ManualUpdate()
+	// } else {
+	// g.runners[i].RandomUpdate()
+	// }
+	// }
 	// }
 
 	// si le runner n'est pas encore arrivé
@@ -167,18 +164,17 @@ func (g *Game) UpdateRunners() {
 		// s'il le runner a changé de position, on envoie sa nouvelle position au serveur
 		// (cela évite de le faire systématiquement même si le joueur ne bouge pas)
 		if g.runners[g.id].xpos != previousPosition {
-			go WriteToServer(g.writer, "updateRunnerPosition|" + fmt.Sprintf("%f", g.runners[g.id].xpos) + "|" + fmt.Sprintf("%f", g.runners[g.id].speed))
+			go WriteToServer(g.writer, "updateRunnerPosition|"+fmt.Sprintf("%f", g.runners[g.id].xpos)+"|"+fmt.Sprintf("%f", g.runners[g.id].speed))
 		}
 	}
 
 	// on démarre 4 goroutines pour lire les positions de chaque joueur
 	// en effet, si on faisait un seul select, alors les messages du canal était lus moins vite qu'ils arrivaient
-	// par conséquent quand plusieurs joueurs couraient en même temps, leurs déplacement n'étaient pas répercutés en temps réel
+	// par conséquent quand plusieurs joueurs couraient en même temps, leur déplacement n'étaient pas répercutés en temps réel
 	for i := 0; i < 4; i++ {
 		go getStateRunMessages(g)
 	}
 }
-
 
 // CheckArrival regarde si le runner est arrivé, et le dit au serveur s'il l'est
 func (g *Game) CheckArrival() {
@@ -214,9 +210,8 @@ func (g *Game) UpdateAnimation() {
 	}
 }
 
-// HandleResults computes the resuls of a run and prepare them for
+// HandleResults computes the results of a run and prepare them for
 // being displayed
-// la fonction 
 func (g *Game) HandleResults() {
 
 	if !g.isPlayerReadyToRestart {
@@ -234,7 +229,6 @@ func (g *Game) HandleResults() {
 			go WriteToServer(g.writer, "playerIsReadyToRestart|")
 		}
 	}
-
 
 	// on lit dans le canal
 	select {
@@ -299,7 +293,7 @@ func (g *Game) Update() error {
 		// finished := g.CheckArrival()
 		// g.UpdateAnimation()
 		// if finished {
-			// g.state++
+		// g.state++
 		// }
 
 		// si le runner n'est pas encore arrivé, on regarde s'il le sera après avoir mis à jour sa position

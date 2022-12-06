@@ -1,8 +1,10 @@
 package main
 
-import "time"
+import (
+	"time"
+)
 
-// lit dans le canal durant StateRun
+// Lit dans le canal durant StateRun
 // la fonction est appelé plusieurs fois en tant que goroutine, ce qui permet d'attendre un message ou d'arrêter
 // le select après un certain temps sans bloquer l'exécution du reste du programme
 func getStateRunMessages(g *Game) {
@@ -31,6 +33,6 @@ func getStateRunMessages(g *Game) {
 		}
 
 	// au bout de 16 millisecondes (~1 frame à 60fps), on arrête la goroutine, s'il ne s'est rien passé
-	case <- time.After(16 * time.Millisecond):
+	case <-time.After(16 * time.Millisecond):
 	}
 }
