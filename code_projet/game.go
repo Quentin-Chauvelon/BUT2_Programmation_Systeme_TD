@@ -20,21 +20,20 @@ import (
 )
 
 type Game struct {
-	state       int           // Current state of the game
-	runnerImage *ebiten.Image // Image with all the sprites of the runners
-	runners     [4]Runner     // The four runners used in the game
-	f           Field         // The running field
-	launchStep  int           // Current step in StateLaunchRun state
-	resultStep  int           // Current step in StateResult state
-	getTPS      bool          // Help for debug
-	// Ajout
-	conn                      net.Conn            // la connexion vers le serveur
-	id                        int                 // id unique qui permet d'identifier le client
-	writer                    *bufio.Writer       // le writer qui permet d'écrire sur le serveur
+	state                     int           // Current state of the game
+	runnerImage               *ebiten.Image // Image with all the sprites of the runners
+	runners                   [4]Runner     // The four runners used in the game
+	f                         Field         // The running field
+	launchStep                int           // Current step in StateLaunchRun state
+	resultStep                int           // Current step in StateResult state
+	getTPS                    bool          // Help for debug
+	conn                      net.Conn 		// la connexion vers le serveur
+	id                        int 			// id unique qui permet d'identifier le client
+	writer                    *bufio.Writer // le writer qui permet d'écrire sur le serveur
 	c                         chan msgContentType // le canal permet de passer les messages du serveur aux parties du code concernées
-	nbJoueurs                 string              // permet de connaître le nombre de joueurs actuellement connectés
-	nbOfPlayersReadyToRestart string              // le nombre de joueurs qui sont prêts à rejouer après la fin de la partie
-	isPlayerReadyToRestart    bool                // permet de savoir si le joueur est prêt à redémarrer
+	nbJoueurs                 string 		// permet de connaître le nombre de joueurs actuellement connectés
+	nbOfPlayersReadyToRestart string 		// le nombre de joueurs qui sont prêts à rejouer après la fin de la partie
+	isPlayerReadyToRestart    bool 			// permet de savoir si le joueur est prêt à redémarrer
 }
 
 // These constants define the five possible states of the game
@@ -46,7 +45,7 @@ const (
 	StateResult                   // Results announcement
 )
 
-// InitGame builds a new game ready for being run by ebiten
+// InitGame builds a new game ready for being run by ebiten  
 func InitGame() (g Game) {
 
 	// on définit l'ip du serveur, ainsi que le port sur lequel le serveur écoute
@@ -54,7 +53,7 @@ func InitGame() (g Game) {
 	var serverPort string = "8080"
 
 	// Dial the server to join the game
-	// on se connecte au serveur en utilisant l'IP et port précédemment défini
+	// on se connecte au serveur en utilisant l'ip et port précédement définis
 	conn, err := net.Dial("tcp", serverIp+":"+serverPort)
 
 	if err != nil {
@@ -69,6 +68,8 @@ func InitGame() (g Game) {
 	// on crée le writer et le canal
 	g.writer = bufio.NewWriter(conn)
 	g.c = make(chan msgContentType, 1)
+
+	// defer conn.Close()
 
 	// Open the png image for the runners sprites
 	img, _, err := image.Decode(bytes.NewReader(assets.RunnerImage))
@@ -91,7 +92,7 @@ func InitGame() (g Game) {
 		g.runners[i] = Runner{
 			xpos: start, ypos: 50 + float64(i*20),
 			maxFrameInterval: frameInterval,
-			colorScheme:      0,
+			colorScheme: 0,
 		}
 	}
 

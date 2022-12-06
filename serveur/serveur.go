@@ -6,34 +6,32 @@ import (
 	"net"
 	"strconv"
 	"strings"
-	"sync"
 )
 
 type Client struct {
-	id            int           // l'id qui permet d'identifier le client
-	conn          net.Conn      // la connexion vers le client
-	writer        *bufio.Writer // le writer qui permet d'envoyer des messages au client
-	colorScheme   int           // la couleur du runner sélectionné par le client
-	colorSelected bool          // si le client a validé ou non sa sélection de couleur du runner
+	id 	  			int 			// l'id qui permet d'identifier le client
+	conn   			net.Conn 		// la connexion vers le client
+	writer 			*bufio.Writer 	// le writer qui permet d'envoyer des messages au client
+	colorScheme     int 			// la couleur du runner sélectionné par le client
+	colorSelected	bool 			// si le client a validé ou non sa sélection de couleur du runner
 }
 
 type Serveur struct {
-	clients                   []Client // le tableau contenant tous les clients
-	nbOfSelectedRunners       int      // le nombre de clients qui ont validé la sélection de la couleur de leur runner
-	nbOfArrivedRunners        int      // le nombre de runners qui sont arrivés
-	nbOfPlayersReadyToRestart int      // le nombre de clients qui sont prêts à redémarrer
+	clients                []Client // le tableau contenant tous les clients
+	nbOfSelectedRunners       int 	// le nombre de clients qui ont validé la sélection de la couleur de leur runner
+	nbOfArrivedRunners        int 	// le nombre de runners qui sont arrivés
+	nbOfPlayersReadyToRestart int 	// le nombre de clients qui sont prêts à redémarrer
 }
 
-// On initialise le serveur avec des valeurs par défaut
-var (
-	w sync.WaitGroup
-	s = Serveur{}
-)
 
-// Lorsqu'un client appuie sur les flèches gauche ou droite pour sélectionner un nouveau runner,
+// on initialise le serveur avec des valeurs par défaut
+var s Serveur = Serveur{[]Client{}, 0, 0, 0}
+
+
+// lorsqu'un client appuie sur les flèces gauche ou droite pour sélectionner un nouveau runner,
 // getNextUnusedRunner permet de déterminer quel est le prochain runner non sélectionné
 // c'est cette fonction qui permet de ne pas pouvoir sélectionner 2 fois le même runner
-// et aussi de pouvoir sauter par-dessus ceux qui sont déjà sélectionnés
+// et aussi de pouvoir sauter par dessus ceux qui sont déjà sélectionnés
 func getNextUnusedRunner(id int, colorScheme int, direction string) int {
 
 	// on vérifie pour chaque client, qu'il est différent de celui que le client (id) essaye de sélectionner
@@ -45,9 +43,9 @@ func getNextUnusedRunner(id int, colorScheme int, direction string) int {
 			// jusqu'à ce qu'on trouve une couleur qui n'est utilisé par personne
 			if s.clients[i].colorScheme == colorScheme {
 				if direction == "left" {
-					return getNextUnusedRunner(id, (colorScheme+7)%8, direction)
+					return getNextUnusedRunner(id, (colorScheme + 7) % 8, direction)
 				} else {
-					return getNextUnusedRunner(id, (colorScheme+1)%8, direction)
+					return getNextUnusedRunner(id, (colorScheme + 1) % 8, direction)
 				}
 			}
 		}
@@ -56,29 +54,27 @@ func getNextUnusedRunner(id int, colorScheme int, direction string) int {
 	return colorScheme
 }
 
-// WriteToClient envoie le message donné au client correspondant au writer donné
+
+// envoie le message donné au client correspondant au writer donné
 func WriteToClient(writer *bufio.Writer, message string) {
+	writer.WriteString(message + "|\n")
+	writer.Flush()
 	// log.Println("wrote : " + message + "|\n")
-	_, err := writer.WriteString(message + "|\n")
-	if err != nil {
-		log.Println("Erreur de transmission : transformation en string", err)
-	}
-	err = writer.Flush()
-	if err != nil {
-		log.Println("Erreur de transmission : nettoyage de buffer", err)
-	}
 }
 
-// WriteToAllClients envoie le message donné à tous les clients
+
+// envoie le message donné à tous les clients
 func WriteToAllClients(message string) {
 	for i := 0; i < len(s.clients); i++ {
 		WriteToClient(s.clients[i].writer, message)
 	}
 }
 
-// WriteToAllClientsExceptOne envoie le message donné à tous les clients sauf celui don't l'id est égal à l'idToNotWrite donné
+
+// envoie le message donné à tous les clients sauf celui don't l'id est égal à l'idToNotWrite donné
 func WriteToAllClientsExceptOne(message string, idToNotWrite int) {
 	for i := 0; i < len(s.clients); i++ {
+
 		// on envoie le message que si l'id du client est différent de celui auquel on ne doit pas écrire
 		if idToNotWrite != s.clients[i].id {
 			WriteToClient(s.clients[i].writer, message)
@@ -86,7 +82,8 @@ func WriteToAllClientsExceptOne(message string, idToNotWrite int) {
 	}
 }
 
-// ReadFromClient lit les messages envoyés par le client
+
+// lit les messages envoyés par le client
 func ReadFromClient(client Client) {
 	var reader *bufio.Reader
 	reader = bufio.NewReader(client.conn)
@@ -96,15 +93,14 @@ func ReadFromClient(client Client) {
 		msg, err := reader.ReadString('\n')
 
 		if err != nil {
-			log.Println("Erreur : ", err)
-			w.Done()
+			// log.Println("Erreur : ", err)
 			return
 		}
 
 		// si on a reçu un message
 		if msg != "" {
 
-			// on découpe le string qui est sous la forme commence|argument1|argument2|...|\n
+			// on découpe le string qui est sous la forme commance|argument1|argument2|...|\n
 			splitString := strings.Split(msg, "|")
 
 			if splitString != nil && len(splitString) > 0 {
@@ -120,16 +116,17 @@ func ReadFromClient(client Client) {
 
 					// on détermine la prochaine couleur de runner qui n'est sélectionné par personne (en fonction quelle flèce a été appuyé (gauche ou droite))
 					if splitString[1] == "left" {
-						nextUnusedRunner = getNextUnusedRunner(client.id, (s.clients[client.id].colorScheme+7)%8, "left")
+						nextUnusedRunner = getNextUnusedRunner(client.id, (s.clients[client.id].colorScheme + 7) % 8, "left")
 					} else {
-						nextUnusedRunner = getNextUnusedRunner(client.id, (s.clients[client.id].colorScheme+1)%8, "right")
+						nextUnusedRunner = getNextUnusedRunner(client.id, (s.clients[client.id].colorScheme + 1) % 8, "right")
 					}
 
-					// on modifie la couleur sélectionnée par le client
+					// on modifie la couleur sélectionné par le client
 					s.clients[client.id].colorScheme = nextUnusedRunner
 
 					// on dit à tous les clients quelle couleur a été sélectionné par le client
 					WriteToAllClients("playerChangedRunner|" + strconv.Itoa(client.id) + "|" + strconv.Itoa(nextUnusedRunner))
+
 
 				// valide ou annule la sélection d'un runner
 				case "playerSelectedRunner":
@@ -140,7 +137,7 @@ func ReadFromClient(client Client) {
 
 						s.nbOfSelectedRunners--
 
-						// si le joueur n'a pas encore sélectionné son runner, on le sélectionne
+					// si le joueur n'a pas encore sélectionné son runner, on le sélectionne
 					} else {
 						// on appelle une fois la fonction getNextUnusedRunner pour s'assurer que le client n'a pas la même sélection qu'un autre (non utilisé finalement)
 						// s.clients[client.id].colorScheme = getNextUnusedRunner(client.id, s.clients[client.id].colorScheme, "right")
@@ -160,16 +157,18 @@ func ReadFromClient(client Client) {
 					// on envoie à tous les clients le runner qui a été validé par le client
 					WriteToAllClients("playerSelectedRunner|" + strconv.Itoa(client.id) + "|" + strconv.Itoa(s.clients[client.id].colorScheme))
 
+
 				// quand un runner se déplace, on met à jour sa position pour tous les clients
 				case "updateRunnerPosition":
 					// on envoie à tous les clients, à part celui qui nous a envoyé l'information, la position et la vitesse du runner
-					WriteToAllClientsExceptOne("updateRunnerPosition|"+strconv.Itoa(client.id)+"|"+splitString[1]+"|"+splitString[2], client.id)
+					WriteToAllClientsExceptOne("updateRunnerPosition|" + strconv.Itoa(client.id) + "|" + splitString[1] + "|" + splitString[2], client.id)
+
 
 				// quand un runner est arrivé, on prévient les autres clients
 				case "runnerArrived":
 
 					// on envoie à tous les clients, à part celui qui nous a envoyé l'information, le temps du runner
-					WriteToAllClientsExceptOne("runnerArrived|"+strconv.Itoa(client.id)+"|"+splitString[1], client.id)
+					WriteToAllClientsExceptOne("runnerArrived|" + strconv.Itoa(client.id) + "|" + splitString[1], client.id)
 
 					// on augmente de 1 le nombre de runners qui sont arrivés
 					s.nbOfArrivedRunners++
@@ -203,6 +202,7 @@ func ReadFromClient(client Client) {
 	}
 }
 
+
 func main() {
 
 	// on écoute les connexions sur le port 8080
@@ -226,16 +226,13 @@ func main() {
 			i, // id
 			conn,
 			bufio.NewWriter(conn),
-			0,     // color scheme
-			false, // color selected
-		}
-
-		w.Add(1)
+			0, // color scheme
+			false} // color selected
 
 		// on ajoute le client au tableau de clients de s
 		s.clients = append(s.clients, client)
 
-		// on envoie au client sont id qui permet de l'identifier
+		// on envoie au client son id qui permet de l'identifier
 		WriteToClient(client.writer, "id|"+strconv.Itoa(i))
 
 		// on informe tous les clients du nombre de joueurs connectés
@@ -247,6 +244,7 @@ func main() {
 
 		defer conn.Close()
 	}
-	// wait pour maintenir les goroutines en vie tant que la conection est maintenue
-	w.Wait()
+
+	// boucle infinie pour maintenir les goroutines en vie
+	for {}
 }
